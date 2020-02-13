@@ -17,7 +17,7 @@ This library eliminates Mirth logging limitations by replacing the logging mecha
 **How to use:**
 
 
-1. Create a jar file from the code
+1. Create a jar file from the code or download [the latest release](https://github.com/odoodo/Mirth-MetaAppender/releases)
 1. Copy the jar to the ***custom-lib*** subfolder of your mirth installation
 1. Add the following code to the global deploy script:<br/>
 **Packages.lu.hrs.mirth.MetaAppender.activate();**<br/>(just needs to be called once after the service is started but multiple calls do not do harm)
