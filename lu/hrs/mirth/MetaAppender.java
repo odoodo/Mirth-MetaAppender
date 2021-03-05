@@ -1,13 +1,17 @@
 package lu.hrs.mirth;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Layout;
@@ -231,10 +235,30 @@ public class MetaAppender extends RollingFileAppender {
 	 *            If this flag is set, all log entries (also channel-specific ones) will also be logged to the main log. (off by default) (OPTIONAL)
 	 * @return A reference to the Meta file appender. Usually this is not needed as everything is handled automatically.
 	 */
+	public static MetaAppender activate(String customLogPath, String customMaxFileSize, Integer customMaxBackupIndex, String customLogPattern, Boolean logAllToMainLog) {
+		return getInstance(customLogPath, customMaxFileSize, customMaxBackupIndex, customLogPattern, logAllToMainLog);
+	}
+
+	/**
+	 * Activates the customization of the mirth logging mechanism (Just has to be called once)
+	 * 
+	 * @param customLogPath
+	 *            Defines a custom location for the log files (OPTIONAL)
+	 * @param customMaxFileSize
+	 *            Defines a custom maximal size per log file (OPTIONAL)
+	 * @param customMaxBackupIndex
+	 *            Defines a maximum number of log files that will be created per channel till the oldest is overwritten (round-robin) (OPTIONAL)
+	 * @param customLogPattern
+	 *            Defines a custom structure for the log file entries (OPTIONAL)
+	 * @param logAllToMainLog
+	 *            If this flag is set, all log entries (also channel-specific ones) will also be logged to the main log. (off by default) (OPTIONAL)
+	 * @return A reference to the Meta file appender. Usually this is not needed as everything is handled automatically.
+	 */
 	private static MetaAppender getInstance(String customLogPath, String customMaxFileSize, Integer customMaxBackupIndex, String customLogPattern,
 			Boolean logAllToMainLog) {
-		return (MetaAppender.metaAppender != null) ? MetaAppender.metaAppender
-				: new MetaAppender(customLogPath, customMaxFileSize, customMaxBackupIndex, customLogPattern, logAllToMainLog);
+
+			return (MetaAppender.metaAppender != null) ? MetaAppender.metaAppender
+					: new MetaAppender(customLogPath, customMaxFileSize, customMaxBackupIndex, customLogPattern, logAllToMainLog);
 	}
 
 	private MetaAppender() {
@@ -260,13 +284,18 @@ public class MetaAppender extends RollingFileAppender {
 	@SuppressWarnings("unchecked")
 	private MetaAppender(String customLogPath, String customMaxFileSize, Integer customMaxBackupIndex, String customLogPattern,
 			Boolean logAllToMainLog) {
-
+		Logger root = null;
+		com.mirth.connect.plugins.serverlog.ServerLogItem.DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
 		// get root logger
-		Logger root = Logger.getRootLogger();
+		 root = Logger.getRootLogger();
+
 		// loop through all appenders attached to the root logger
 		for (Appender appender : Collections.list((Enumeration<Appender>) root.getAllAppenders())) {
 			// look for the file appender
-			if (appender instanceof RollingFileAppender) {
+			if (appender instanceof MetaAppender) {
+				MetaAppender.metaAppender = (MetaAppender) appender;
+				return;
+			}else if (appender instanceof RollingFileAppender) {
 				// file appender has been found
 				RollingFileAppender mainLogAppender = (RollingFileAppender) appender;
 				// if no custom properties have been provided, use the configuration of log4j.properties as default
@@ -279,10 +308,27 @@ public class MetaAppender extends RollingFileAppender {
 					// no custom max file size has been provided - use the one from properties as default
 					this.configMaxFileSize = mainLogAppender.getMaximumFileSize();
 				}
+				// default value is the same size like mirth.log
 				this.configMaxBackupIndex = (customMaxBackupIndex != null) ? customMaxBackupIndex : mainLogAppender.getMaxBackupIndex();
+				// default layout is the same like mirth.log
 				this.configLayout = (customLogPattern != null) ? new PatternLayout(customLogPattern) : mainLogAppender.getLayout();
+				// log level will be the same like mirth.log
 				this.configThreshold = mainLogAppender.getThreshold();
+				try{
+				// files will be placed at the same location like mirth.log
 				this.configLogLocation = Paths.get(mainLogAppender.getFile()).getParent().toString();
+				} catch (Exception e) {
+					StringWriter sw = new StringWriter();
+					ExceptionUtils.printRootCauseStackTrace(e,new PrintWriter(sw));
+					String exceptionAsString = sw.toString();
+					 root = Logger.getRootLogger();
+					root.setLevel(Level.INFO);
+					root.error("CLASS = "+appender.getClass().getCanonicalName()+"   Meta?: "+ (appender instanceof lu.hrs.mirth.MetaAppender));
+					root.error("INSTANTIATION EXCEPTION5 ("+MetaAppender.metaAppender+"): "+exceptionAsString);
+					
+
+				}
+				// default value is "false"
 				this.logAllToMainLog = (logAllToMainLog != null) && logAllToMainLog;
 				// remove the current file appender from the root logger
 				root.removeAppender(mainLogAppender);
@@ -290,8 +336,6 @@ public class MetaAppender extends RollingFileAppender {
 				mainLogAppender.setName(mainLogAppenderName);
 				// and add it instead to the appender list
 				addAppender(mainLogAppender);
-				// remember the reference to this object for subsequent calls
-				MetaAppender.metaAppender = this;
 			} else if (appender instanceof ConsoleAppender) {
 				// console appender has been found
 				ConsoleAppender console = (ConsoleAppender) appender;
@@ -314,6 +358,12 @@ public class MetaAppender extends RollingFileAppender {
 
 		// finally attach the meta appender to the root logger
 		root.addAppender(this);
+		
+		// remember the reference to this object for subsequent calls
+		MetaAppender.metaAppender = this;
+		 root = Logger.getRootLogger();
+			root.setLevel(Level.INFO);
+		root.error("META APPENDER = "+MetaAppender.metaAppender);
 	}
 
 	/**
@@ -381,6 +431,8 @@ public class MetaAppender extends RollingFileAppender {
 				appender.close();
 			}
 		}
+		
+		MetaAppender.metaAppender = null;
 	}
 
 	@Override
@@ -394,7 +446,7 @@ public class MetaAppender extends RollingFileAppender {
 		// call the right appender dependent on the channel (or the main appender if log entry was not caused by a channel)
 		appender = getAppender(channelName);
 		// and write the entry to the log file
-		appender.doAppend(event);
+	//	appender.doAppend(event);
 
 		// in case of channel logging
 		if (channelName != null) {
