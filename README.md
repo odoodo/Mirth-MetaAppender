@@ -73,7 +73,7 @@ The following scopes do exist:
 | Prefix | Meaning | Description |
 |---|---|---|
 |**#DO:**|dashboard only|log message is only written to the dashboard.|
-|**#FO:​**|file only|log message is only written to the file. (channel log file and/or mirth.log - depending on the configuration)|
+|**#FO:​**|file only|log message is only written to the file.<br/> *(channel log file and/or mirth.log - depending on the configuration)*|
 |**#CO:​**|console only|log message is only written to the console.|
 
 *Examples:*
