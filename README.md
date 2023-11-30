@@ -1,7 +1,7 @@
 **Context**<br/>
 * This repository enhances the Mirth enterprise service bus, an application integration middleware that enables the information exchange between arbitrary applications in the healthcare sector.
 * The source code of the open source version of this dual-licenced product can be found in [this repository](https://github.com/nextgenhealthcare/connect).
-* The quite active community around Mirth mainly exchanges via [this forum](http://www.mirthcorp.com/community/forums/index.php)
+* The quite active community around Mirth mainly exchanges via [this forum](https://forums.mirthproject.io/forum/mirth-connect) and [that]([https://forums.mirthproject.io/forum/mirth-connect](https://github.com/nextgenhealthcare/connect/discussions)) forum.
 * The company providing a ready to go download version as well as commercial support for this product is [NextGen Healthcare](https://www.nextgen.com/products-and-services/nextgen-connect-integration-engine-downloads)
 
 **Functionality**<br/>
@@ -13,6 +13,7 @@ This library eliminates Mirth logging limitations by replacing the logging mecha
 * Messages that are not caused by a channel (e.g. global deploy script) are logged to the standard log file [I]mirth.log[/I].
 * All messages on log level ERROR are accumulated in a specific log file called [I]mirthErrors.log[/I].
 * All messages that are logged to the console or administrator dashboard are enriched with the name of the channel causing the message.
+* This library is compatible with the Log4J implementation (till v4.0.1) and the Log4j2 implementation (from v4.1.0) of Mirth Connect
 
 **How to use:**
 
@@ -21,12 +22,12 @@ This library eliminates Mirth logging limitations by replacing the logging mecha
 1. Copy the jar to the ***custom-lib*** subfolder of your mirth installation
 1. Add the following code to the global deploy script:<br/>
 **Packages.lu.hrs.mirth.MetaAppender.activate();**<br/>(just needs to be called once after the service is started but multiple calls do not do harm)
-1. :exclamation:**If you are using the function [activateChannelLogging()](http://www.mirthcorp.com/community/forums/showthread.php?t=216921), remove it or remove it's content if already referenced in many places**:exclamation:
+1. :exclamation:**If you are using the function [activateChannelLogging()](https://forums.mirthproject.io/forum/mirth-connect/support/16039-automatic-channel-centric-logging), remove it or remove it's content if already referenced in many places**:exclamation:
 1. Restart the mirth service
 
 
 **Customization:**<br/>
-By default the logging configuration of *log4j.properties* in the subfolder *.\config* of the mirth installation is used. It is however possible to overwrite certain parameters by providing them to the **activate()** call:<br/>
+By default the logging configuration of *log4j.properties* respectively *log4j2.properties* in the subfolder *.\config* of the mirth installation is used. It is however possible to overwrite certain parameters by providing them to the **activate()** call:<br/>
 
 `Packages.lu.hrs.mirth.MetaAppender.activate(<customLogPath>, <customMaxFileSize>, <customMaxBackupIndex>, <customLogPattern>, <logAllToMainLog>);`<br/> 
 
@@ -65,7 +66,32 @@ Focus can be removed by:<br/>
 * Setting a filter does not influence the logging to the channel log-files but only the dashboard.
 * If a filter is set, this is indicated by a "**FILTERED:** "-prefix before the channel name of each log entry.
 
-**Additional Information:**<br/>
-* The meta appender "hijacks" the mirth logging mechanism and gains that way full control over all logging activities.
-* It thus substitutes the approach posted [some time ago](http://www.mirthcorp.com/community/forums/showthread.php?t=216921) in the Mirth support forum. It overcomes all weaknesses of this initial approach (no exception logging to channel logs, no automated integration for transformers).
-* It solves all issues mentioned [here](http://www.mirthcorp.com/community/issues/browse/MIRTH-3269) in Mirth Jira
+***Log a message to a specific location***<br/>
+A scope-prefix can be used in a log message in order to only log it to the dashboard, logfile, or console.
+
+The following scopes do exist:
+| Prefix | Meaning | Description |
+|---|---|---|
+|**#DO:**|dashboard only|log message is only written to the dashboard.|
+|**#FO:​**|file only|log message is only written to the file. (channel log file and/or mirth.log - depending on the configuration)|
+|**#CO:​**|console only|log message is only written to the console.|
+
+*Examples:*
+
+*Standard log message:*
+```js
+ logger.info('This message will appear on dashboard, log file & console');
+```
+*Log to **dashboard only** by using the **#DO:** - prefix:*
+```js
+logger.info('#DO: This message will only appear on dashboard');
+```
+*Log to **file only** by using the **#FO:** - prefix:​*
+```js
+​logger.info('#FO: This message will only appear in the log file');
+```
+*Log to **console only** by using the **#CO:** - prefix:​*
+```js
+logger.info('#CO: This message will only appear on the console');
+```
+*The prefix itself will not appear in the displayed log message.*
