@@ -1,8 +1,10 @@
 package lu.hrs.mirth;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -340,8 +342,21 @@ public class MetaAppenderLog4J2 extends AbstractAppender implements MetaAppender
 				this.configLayout = (customLogPattern != null) ? customLogPattern : mainLogAppender.getLayout().toString();
 
 				try {
-					// files will be placed at the same location like mirth.log
-					this.configLogLocation = Paths.get(mainLogAppender.getFileName()).getParent().toFile().getAbsolutePath();
+					// if a custom log file location was set
+					if((customLogPath != null) && (customLogPath.length() > 0)) {
+						try {
+							// assure that the path actually exists
+							Files.createDirectories(Paths.get(customLogPath));
+							
+						} catch (IOException e) {
+							// if path could not be created, use the one configured by the mirth log4j2 configuration
+							customLogPath = null;
+						}
+					}
+
+					// set the log file location
+					this.configLogLocation = (customLogPath == null) ? Paths.get(mainLogAppender.getFileName()).getParent().toFile().getAbsolutePath() : customLogPath;
+					
 				} catch (Exception e) {
 					StringWriter sw = new StringWriter();
 					ExceptionUtils.printRootCauseStackTrace(e, new PrintWriter(sw));
